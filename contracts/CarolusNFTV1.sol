@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.2;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-contract CucoNFT is
+contract CarolusNFTV1 is
     ERC721,
     ERC721Enumerable,
+    ERC721URIStorage,
     Pausable,
     AccessControl,
     ERC721Burnable
@@ -24,76 +26,89 @@ contract CucoNFT is
     // TODO eventually this should be a compress string
     // using some sort of compression algorithm like the ones proposed in
     // https://stackoverflow.com/questions/53926612/is-there-a-way-to-compress-a-string-into-a-smaller-string-with-reversibility
-    mapping(uint256 => string) public _contentMap;
+    mapping(uint256 => string) public contentMap;
 
     // tokenid => author
-    mapping(uint256 => address) public _authorMap;
+    mapping(uint256 => address) public authorMap;
 
-    // TODO minPrice in way???
-    uint256 private _minPrice;
+    // Price in wei
+    uint256 private minPrice;
 
-    string private _theBaseURI;
+    string private baseURI;
 
-    uint256 private _funds;
+    uint256 private pendingWithdrawals;
 
     constructor(
         string memory _name,
         string memory _symbol,
-        uint256 minPrice
+        uint256 newMinPrice,
+        string memory newBaseURI
     ) ERC721(_name, _symbol) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(PAUSER_ROLE, msg.sender);
-        _grantRole(MINTER_ROLE, msg.sender);
-        _minPrice = minPrice;
+        minPrice = newMinPrice;
+        baseURI = newBaseURI;
     }
 
-    function pause() public onlyRole(PAUSER_ROLE) {
-        _pause();
-    }
+    //function pause() public onlyRole(PAUSER_ROLE) {
+    //_pause();
+    //}
 
-    function unpause() public onlyRole(PAUSER_ROLE) {
-        _unpause();
-    }
+    //function unpause() public onlyRole(PAUSER_ROLE) {
+    //_unpause();
+    //}
 
-    function publishMint(string memory content) public whenNotPaused {
+    function publishMint(
+        string memory content //whenNotPaused
+    ) public payable {
         // should have minPrice in value
-        require(msg.value >= _minPrice, "can't afford publishing");
+        require(msg.value >= minPrice, "can't afford publishing");
 
         // account for the value
-        _funds += msg.value;
+        pendingWithdrawals += msg.value;
 
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(msg.sender, tokenId);
 
-        _contentMap[tokenId] = content;
-        _authorMap[tokenId] = msg.sender;
+        contentMap[tokenId] = content;
+        authorMap[tokenId] = msg.sender;
     }
 
     // withdraw funds by moderator
-    function withdraw() public whenNotPaused onlyRole(MODERATOR_ROLE) {
-        _funds = 0;
-        msg.sender.transfer(_funds);
-    }
-
-    function setMinPrice(uint256 minPrice)
+    // TODO security analysis
+    // IMPORTANT: casting msg.sender to a payable address is only safe if ALL members of the MODERATOR role are payable addresses.
+    function withdraw()
         public
-        whenNotPaused
+        //whenNotPaused
         onlyRole(MODERATOR_ROLE)
     {
-        _minPrice = minPrice;
+        address payable receiver = payable(msg.sender);
+
+        uint256 toWithdraw = pendingWithdrawals;
+        // zero account before transfer to prevent re-entrancy attack
+        pendingWithdrawals = 0;
+        receiver.transfer(toWithdraw);
+    }
+
+    function setMinPrice(uint256 newMinPrice)
+        public
+        //whenNotPaused
+        onlyRole(MODERATOR_ROLE)
+    {
+        minPrice = newMinPrice;
     }
 
     function _baseURI() internal view override returns (string memory) {
-        return _theBaseURI;
+        return baseURI;
     }
 
-    function setBaseURI(string memory baseURI)
+    function setBaseURI(string memory newBaseURI)
         public
-        whenNotPaused
+        //whenNotPaused
         onlyRole(MODERATOR_ROLE)
     {
-        _theBaseURI = baseURI;
+        baseURI = newBaseURI;
     }
 
     function _beforeTokenTransfer(
