@@ -28,8 +28,12 @@ contract CarolusNFTV1 is
     // https://stackoverflow.com/questions/53926612/is-there-a-way-to-compress-a-string-into-a-smaller-string-with-reversibility
     mapping(uint256 => string) public contentMap;
 
-    // tokenid => author
-    mapping(uint256 => address) public authorMap;
+    mapping(uint256 => uint256) public tokenToUpvotesMap;
+    mapping(uint256 => uint256) public tokenToDownvotesMap;
+    mapping(uint256 => mapping(address => bool))
+        public tokenToUpvoterAddressMap;
+    mapping(uint256 => mapping(address => bool))
+        public tokenToDownvoterAddressMap;
 
     // Price in wei
     uint256 private minPrice;
@@ -45,22 +49,21 @@ contract CarolusNFTV1 is
         string memory newBaseURI
     ) ERC721(_name, _symbol) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(MODERATOR_ROLE, msg.sender);
         _grantRole(PAUSER_ROLE, msg.sender);
         minPrice = newMinPrice;
         baseURI = newBaseURI;
     }
 
-    //function pause() public onlyRole(PAUSER_ROLE) {
-    //_pause();
-    //}
+    function pause() public onlyRole(PAUSER_ROLE) {
+        _pause();
+    }
 
-    //function unpause() public onlyRole(PAUSER_ROLE) {
-    //_unpause();
-    //}
+    function unpause() public onlyRole(PAUSER_ROLE) {
+        _unpause();
+    }
 
-    function publishMint(
-        string memory content //whenNotPaused
-    ) public payable {
+    function publishMint(string memory content) public payable whenNotPaused {
         // should have minPrice in value
         require(msg.value >= minPrice, "can't afford publishing");
 
@@ -72,17 +75,12 @@ contract CarolusNFTV1 is
         _safeMint(msg.sender, tokenId);
 
         contentMap[tokenId] = content;
-        authorMap[tokenId] = msg.sender;
     }
 
     // withdraw funds by moderator
     // TODO security analysis
     // IMPORTANT: casting msg.sender to a payable address is only safe if ALL members of the MODERATOR role are payable addresses.
-    function withdraw()
-        public
-        //whenNotPaused
-        onlyRole(MODERATOR_ROLE)
-    {
+    function withdraw() public whenNotPaused onlyRole(MODERATOR_ROLE) {
         address payable receiver = payable(msg.sender);
 
         uint256 toWithdraw = pendingWithdrawals;
@@ -93,10 +91,68 @@ contract CarolusNFTV1 is
 
     function setMinPrice(uint256 newMinPrice)
         public
-        //whenNotPaused
+        whenNotPaused
         onlyRole(MODERATOR_ROLE)
     {
         minPrice = newMinPrice;
+    }
+
+    /// Give a possitive vote a given news by tokenId,
+    /// if you already voted the vote will be removed
+    ///
+    function upvoteToken(uint256 tokenId) public whenNotPaused {
+        // this will through if token does not exist
+        ownerOf(tokenId);
+        address voter = msg.sender;
+        bool hasAlreadyVoted = tokenToUpvoterAddressMap[tokenId][voter];
+
+        tokenToUpvoterAddressMap[tokenId][voter] = !hasAlreadyVoted;
+        if (hasAlreadyVoted) {
+            tokenToUpvotesMap[tokenId] -= 1;
+        } else {
+            tokenToUpvotesMap[tokenId] += 1;
+        }
+    }
+
+    /// Give a negative vote a given news by tokenId
+    /// if you already voted the vote will be removed
+    ///
+    function downvoteToken(uint256 tokenId) public whenNotPaused {
+        // this will through if token does not exist
+        ownerOf(tokenId);
+        address voter = msg.sender;
+        bool hasAlreadyVoted = tokenToDownvoterAddressMap[tokenId][voter];
+
+        tokenToDownvoterAddressMap[tokenId][voter] = !hasAlreadyVoted;
+        if (hasAlreadyVoted) {
+            tokenToDownvotesMap[tokenId] -= 1;
+        } else {
+            tokenToDownvotesMap[tokenId] += 1;
+        }
+    }
+
+    /// Censure the content of a given token but only when it has enough downvotes
+    /// There should a minimum amount of votes, up or down, to properly asses the news.
+    ///
+    function censure(uint256 tokenId)
+        public
+        whenNotPaused
+        onlyRole(MODERATOR_ROLE)
+    {
+        // this will through if token does not exist
+        ownerOf(tokenId);
+        uint256 upvotes = tokenToUpvotesMap[tokenId];
+        require(upvotes >= 10, "not enough upvotes");
+        uint256 downvotes = tokenToDownvotesMap[tokenId];
+        require(downvotes >= 10, "not enough downvotes");
+
+        // twice dowvotes than upvotes to be able to cesnure.
+        // 10 upvotes 20 downvotes rounded down
+        uint256 downvoteRate = downvotes / upvotes;
+        require(downvoteRate >= 2, "not enough downvote rate");
+
+        // remove content
+        contentMap[tokenId] = "";
     }
 
     function _baseURI() internal view override returns (string memory) {
@@ -105,7 +161,7 @@ contract CarolusNFTV1 is
 
     function setBaseURI(string memory newBaseURI)
         public
-        //whenNotPaused
+        whenNotPaused
         onlyRole(MODERATOR_ROLE)
     {
         baseURI = newBaseURI;
