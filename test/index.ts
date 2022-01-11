@@ -207,9 +207,33 @@ describe("CarolusNFTV1", function () {
       voters.length
     );
 
-    console.log("ASDASD");
     await isTxOk(contract.censure(tokenId), "should allow to censure a token");
   });
 
-  it("should allow withrawing", async () => {});
+  it("should allow withrawing", async () => {
+    const [admin, minter] = await ethers.getSigners();
+    const contract = await deploy();
+
+    const originalBalance = Number(
+      ethers.utils.formatEther(await admin.getBalance())
+    );
+
+    const minterContract = contract.connect(minter);
+
+    await mintNews(minterContract);
+
+    const toWithdraw = Number(
+      ethers.utils.formatEther(await contract.pendingWithdrawals())
+    );
+    assert.equal(toWithdraw, 5);
+
+    await isTxOk(contract.withdraw());
+
+    const toWithdraw2 = await contract.pendingWithdrawals();
+    assert.equal(toWithdraw2.toNumber(), 0);
+
+    const balance = Number(ethers.utils.formatEther(await admin.getBalance()));
+    assert.ok(Number(balance) > originalBalance);
+    assert.ok(Number(balance) > originalBalance + 5 - 0.1);
+  });
 });

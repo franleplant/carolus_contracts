@@ -40,7 +40,7 @@ contract CarolusNFTV1 is
 
     string private baseURI;
 
-    uint256 private pendingWithdrawals;
+    uint256 public pendingWithdrawals;
 
     constructor(
         string memory _name,
