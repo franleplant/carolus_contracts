@@ -6,8 +6,13 @@ import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
+import Env from "./lib/Env";
 
 dotenv.config();
+
+const PRIVATE_KEY = Env.get("PRIVATE_KEY");
+const POLYGON_URL = Env.get("POLYGON_URL");
+const POLYGON_MUMBAI_URL = Env.get("POLYGON_MUMBAI_URL");
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -25,10 +30,13 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 const config: HardhatUserConfig = {
   solidity: "0.8.4",
   networks: {
-    ropsten: {
-      url: process.env.ROPSTEN_URL || "",
-      accounts:
-        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    polygon: {
+      url: POLYGON_URL,
+      accounts: [PRIVATE_KEY],
+    },
+    polygon_mumbai: {
+      url: POLYGON_MUMBAI_URL,
+      accounts: [PRIVATE_KEY],
     },
   },
   gasReporter: {

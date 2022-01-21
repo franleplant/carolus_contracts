@@ -210,6 +210,27 @@ describe("CarolusNFTV1", function () {
     await isTxOk(contract.censure(tokenId), "should allow to censure a token");
   });
 
+  it("emergencyCensure", async () => {
+    const tokenId = 0;
+    const contract = await deploy();
+
+    const minter = (await ethers.getSigners())[1];
+    const minterContract = contract.connect(minter);
+
+    await shouldThrow(
+      () => isTxOk(contract.emergencyCensure(tokenId)),
+      "should not allow an unexisting token to be censured"
+    );
+
+    await mintNews(minterContract);
+
+    await isTxOk(contract.emergencyCensure(tokenId));
+
+    const content = await contract.contentMap(tokenId);
+
+    assert.equal(content, "");
+  });
+
   it("should allow withrawing", async () => {
     const [admin, minter] = await ethers.getSigners();
     const contract = await deploy();

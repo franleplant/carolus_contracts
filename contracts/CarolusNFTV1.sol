@@ -155,6 +155,20 @@ contract CarolusNFTV1 is
         contentMap[tokenId] = "";
     }
 
+    /// Emergency use only.
+    ///
+    function emergencyCensure(uint256 tokenId)
+        public
+        whenNotPaused
+        onlyRole(MODERATOR_ROLE)
+    {
+        // this will through if token does not exist
+        ownerOf(tokenId);
+
+        // remove content
+        contentMap[tokenId] = "";
+    }
+
     function _baseURI() internal view override returns (string memory) {
         return baseURI;
     }
