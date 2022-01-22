@@ -27,6 +27,8 @@ contract CarolusNFTV1 is
     // using some sort of compression algorithm like the ones proposed in
     // https://stackoverflow.com/questions/53926612/is-there-a-way-to-compress-a-string-into-a-smaller-string-with-reversibility
     mapping(uint256 => string) public contentMap;
+    mapping(uint256 => address) public tokenToAuthorMap;
+    mapping(uint256 => uint) public tokenToTimestampMap;
 
     mapping(uint256 => uint256) public tokenToUpvotesMap;
     mapping(uint256 => uint256) public tokenToDownvotesMap;
@@ -63,6 +65,7 @@ contract CarolusNFTV1 is
         _unpause();
     }
 
+    // TODO author and date map
     function publishMint(string memory content) public payable whenNotPaused {
         // should have minPrice in value
         require(msg.value >= minPrice, "can't afford publishing");
@@ -75,6 +78,8 @@ contract CarolusNFTV1 is
         _safeMint(msg.sender, tokenId);
 
         contentMap[tokenId] = content;
+    tokenToAuthorMap[tokenId] = msg.sender;
+    tokenToTimestampMap[tokenId] =block.timestamp;
     }
 
     // withdraw funds by moderator

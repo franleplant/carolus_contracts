@@ -35,6 +35,7 @@ const config: HardhatUserConfig = {
       accounts: [PRIVATE_KEY],
     },
     polygon_mumbai: {
+      chainId: 80001,
       url: POLYGON_MUMBAI_URL,
       accounts: [PRIVATE_KEY],
     },

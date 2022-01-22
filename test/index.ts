@@ -56,7 +56,7 @@ describe("CarolusNFTV1", function () {
     await deploy();
   });
 
-  it("should allow publishMinting", async function () {
+  it.only("should allow publishMinting", async function () {
     let contract = await deploy();
 
     const contentCreator = (await ethers.getSigners())[1];
@@ -68,16 +68,20 @@ describe("CarolusNFTV1", function () {
       range(10).map(async (index) => {
         const tokenId = await contract.tokenByIndex(index);
 
-        const [content, tokenURI] = await Promise.all([
+        const [content, tokenURI, author, date] = await Promise.all([
           contract.contentMap(tokenId),
           contract.tokenURI(tokenId),
+          contract.tokenToAuthorMap(tokenId),
+          contract.tokenToTimestampMap(tokenId),
         ]);
 
-        return { tokenId, content, tokenURI };
+        return { tokenId, content, tokenURI, author, date };
       })
     );
 
+    //console.table(news)
     expect(news.length).to.equal(10);
+    expect(news[0].author).to.equal(contentCreator.address)
   });
 
   it("should allow upvoting", async () => {
