@@ -81,7 +81,7 @@ describe("CarolusNFTV1", function () {
 
     //console.table(news)
     expect(news.length).to.equal(10);
-    expect(news[0].author).to.equal(contentCreator.address)
+    expect(news[0].author).to.equal(contentCreator.address);
   });
 
   it("should allow upvoting", async () => {

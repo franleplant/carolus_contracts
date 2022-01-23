@@ -27,6 +27,18 @@ console.log("USIGN TOKEN URI", TOKEN_BASE_URI);
 
 async function main() {
   const ContractFactory = await ethers.getContractFactory("CarolusNFTV1");
+  const deployTransaction = ContractFactory.getDeployTransaction(
+    TOKEN_NAME,
+    TOKEN_SYMBOL,
+    TOKEN_MINT_PRICE,
+    TOKEN_BASE_URI
+  );
+
+  const estimated = await ethers.provider.estimateGas(deployTransaction);
+  console.log("Estimating gas:", ethers.utils.formatEther(estimated));
+
+  //throw new Error("this is only a test");
+
   const contract = await ContractFactory.deploy(
     TOKEN_NAME,
     TOKEN_SYMBOL,
